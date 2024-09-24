@@ -12,9 +12,14 @@ app.post('/signup',async(req,res)=>{
         age:27,
         password:"1234567890"
     }
-    const user=new User(userObj)
-   await user.save()
-   res.send("User added succesfully")
+    try {
+        const user=new User(userObj)
+        await user.save()
+        res.send("User added succesfully")
+    } catch (error) {
+        res.status(400).send("Error in saving the user",error)
+    }
+  
 })
 
 
