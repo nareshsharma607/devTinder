@@ -1,63 +1,65 @@
-const express=require("express")
-const connectDB=require('./config/database')
-const User=require('./model/user')
-const app=express()
+const express = require("express");
+const connectDB = require("./config/database");
+const User = require("./model/user");
+const { validateSignup } = require("./utils/validator");
+const bcrypt = require("bcrypt");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+const { userAuth } = require("./middlewares/authMddleware");
+const app = express();
 
-app.use(express.json())
+app.use(express.json());
+app.use(cookieParser());
 
-app.post('/signup',async(req,res)=>{
-    console.log(req.body)
-    const userObj=req.body
-    try {
-        console.log(User)
-        const user=new User(userObj)
-        console.log(user)
-        await user.save()
-        res.send("User added succesfully")
-    } catch (error) {
-        res.status(400).send("Error in saving the user "+ error)
-    } 
-  
-})
+app.post("/signup", async (req, res) => {
+  const { firstName, lastName, emailId, password } = req.body;
 
+  try {
+    validateSignup(req);
+    const encryptedPass = await bcrypt.hash(password, 10);
+    const user = new User({
+      firstName,
+      lastName,
+      emailId,
+      password: encryptedPass,
+    });
+    console.log(user);
+    await user.save();
+    res.send("User added succesfully");
+  } catch (error) {
+    res.status(400).send("Error in saving the user " + error);
+  }
+});
 
-app.get("/feed",async(req,res)=>{
-    try {
-        const users=await User.find({})
-        res.send(users)
-    } catch (error) {
-        res.status(400).send("Error in getting the users",error)
+app.post("/login", async (req, res) => {
+  const { emailId, password } = req.body;
+
+  try {
+    const user = await User.findOne({ emailId });
+    console.log(user);
+    if(!user){
+        throw Error("Invalid email/password")
     }
-})
+    await user.validatePassword(password);
 
-app.delete('/user',async(req,res)=>{
-    const id=req.body.id
-    try {
-        const user=await User.findByIdAndDelete(id)
-        res.send("user deleted succesfully")
-    } catch (error) {
-        res.send("error in deleting the user")
+    const token = await user.getJwt();
+    res.cookie("token", token);
+    res.send("User Login succesfully");
+  } catch (error) {
+    res.status(401).send("Unable to login " + error);
+  }
+});
 
+app.get("/profile", userAuth, (req, res) => {
+  console.log(req.user);
+  res.send(req.user);
+});
 
-    }
-})
-
-
-app.patch('/user',async(req,res)=>{
-    const id=req.body.id
-    try {
-        const user=await User.findByIdAndUpdate({_id:id},req.body,{runValidators:true})
-        res.send("user updated succesfully")
-    } catch (error) {
-        res.send("error in updating the user")
-    }
-})
-
-connectDB().then(()=>{
-    console.log("connected to db succesfully")
-    app.listen(3000,()=>{
-        console.log("server is running")
-    })
-}).catch((err)=>console.log("error in connecting to db",err))
-
-
+connectDB()
+  .then(() => {
+    console.log("connected to db succesfully");
+    app.listen(3000, () => {
+      console.log("server is running");
+    });
+  })
+  .catch((err) => console.log("error in connecting to db", err));
