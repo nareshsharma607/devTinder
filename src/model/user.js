@@ -27,11 +27,11 @@ const userSchema=new mongoose.Schema({
     password:{
         type:String,
         required:true,
-        validate(value){
-            if(!validator.isStrongPassword(value)){
-                throw Error("Choose a strong password")
-            }
-        }
+        // validate(value){
+        //     if(!validator.isStrongPassword(value)){
+        //         throw Error("Choose a strong password")
+        //     }
+        // }
     },
     age:{
         type:Number,
@@ -78,9 +78,9 @@ userSchema.methods.getJwt=async function(){
 
 }
 userSchema.methods.validatePassword=async function(userInputPassword){
-    const {emailId,password}=this
+    const user=this
    
-    const isPasswordValid=await bcrypt.compare(userInputPassword,password)
+    const isPasswordValid=await bcrypt.compare(userInputPassword,user.password)
     if(!isPasswordValid){
         throw Error("Invalid email/password")
     }
